@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniTube Pro - Admin Secured</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            background-color: #0b0d10;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glow-orange { box-shadow: 0 0 20px rgba(255, 107, 0, 0.5); }
+        ::-webkit-scrollbar { display: none; }
+        
+        input[type="text"], input[type="password"], input[type="file"] {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 15px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        input:focus { border-color: #FF6B00; }
+        video::-webkit-media-controls { display: none !important; }
+        
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent; height: 4px; border-radius: 2px; cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #FF6B00; margin-top: -4px; box-shadow: 0 0 5px rgba(255, 107, 0, 0.8); }
+
+        /* Fullscreen Player Styles */
+        .custom-player-container:fullscreen {
+            width: 100vw !important; height: 100vh !important; border-radius: 0 !important;
+        }
+        .custom-player-container:-webkit-full-screen {
+            width: 100vw !important; height: 100vh !important; border-radius: 0 !important;
+        }
+        .custom-player-container:fullscreen video,
+        .custom-player-container:-webkit-full-screen video {
+            object-fit: contain !important; /* Prevents video cropping in fullscreen */
+        }
+    </style>
+</head>
+<body class="pb-24 pt-32">
+
+    <!-- Top Header Area -->
+    <div class="fixed top-0 w-full z-40 bg-[#0b0d10]/90 backdrop-blur-md border-b border-white/5">
+        <div class="flex justify-between items-center p-4 pb-2">
+            <div class="text-[#FF6B00] font-black text-2xl flex items-center gap-2 tracking-wide">
+                <i class="fa-solid fa-play text-xl"></i> MINITUBE
+            </div>
+            <div id="total-count" class="text-xs font-semibold bg-[#FF6B00]/20 text-[#FF6B00] px-3 py-1 rounded-full border border-[#FF6B00]/30">
+                0 Videos
+            </div>
+        </div>
+        <div class="px-4 pb-4">
+            <div class="relative w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400"></i>
+                <input type="text" id="search-input" placeholder="Search videos or channels..." class="!mb-0 !pl-10 !py-3 !rounded-full !bg-white/5 glass">
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Feed Container -->
+    <div class="px-4" id="video-feed">
+        <div class="text-center text-[#FF6B00] mt-20 flex flex-col items-center">
+            <div class="w-10 h-10 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mb-3"></div>
+            <span class="font-semibold tracking-wider text-sm">LOADING AWESOMENESS...</span>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="glass fixed bottom-4 left-4 right-4 z-40 flex justify-between items-center px-8 py-3 rounded-3xl">
+        <div class="flex flex-col items-center text-[#FF6B00] cursor-pointer" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+            <i class="fa-solid fa-house mb-1 text-xl"></i>
+        </div>
+        
+        <div class="flex flex-col items-center relative z-10" onclick="toggleModal('upload-modal')">
+            <div class="w-14 h-14 bg-[#FF6B00] rounded-full flex justify-center items-center text-white text-2xl glow-orange transition transform active:scale-90 cursor-pointer shadow-lg shadow-[#FF6B00]/40 -mt-8 border-4 border-[#0b0d10]">
+                <i class="fa-solid fa-plus"></i>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center text-gray-400 hover:text-white transition cursor-pointer" onclick="toggleModal('profile-modal')">
+            <i class="fa-solid fa-user mb-1 text-xl"></i>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex justify-center items-end sm:items-center transition-all duration-300">
+        <div class="glass w-full max-w-md p-6 rounded-t-3xl sm:rounded-3xl border border-gray-700/50 transform transition-transform shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white tracking-wide">Upload Center</h2>
+                <div class="w-8 h-8 rounded-full bg-white/10 flex justify-center items-center cursor-pointer active:scale-90" onclick="toggleModal('upload-modal')">
+                    <i class="fa-solid fa-xmark text-white"></i>
+                </div>
+            </div>
+            
+            <div id="upload-auth-section">
+                <p class="text-gray-400 text-sm mb-4 text-center">Admin access required to upload videos.</p>
+                <input type="password" id="upload-pin-input" placeholder="Enter Upload PIN" class="text-center tracking-widest text-lg">
+                <p id="upload-pin-error" class="text-red-500 text-sm text-center mb-4 font-semibold h-5"></p>
+                <button onclick="checkUploadPin()" class="w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-xl glow-orange active:scale-95 transition tracking-wider">
+                    UNLOCK UPLOAD
+                </button>
+            </div>
+
+            <form id="upload-form" class="hidden">
+                <input type="text" id="vid-title" placeholder="Video Title" required>
+                <input type="text" id="vid-channel" placeholder="Channel Name" required>
+                <label class="text-xs text-[#FF6B00] font-semibold mb-1 block uppercase tracking-wider">Thumbnail</label>
+                <input type="file" id="thumb-file" accept="image/*" required class="!py-2">
+                <label class="text-xs text-[#FF6B00] font-semibold mb-1 block uppercase tracking-wider">Video File</label>
+                <input type="file" id="vid-file" accept="video/*" required class="!py-2">
+                <p id="upload-status" class="text-[#FF6B00] text-sm text-center mb-4 font-semibold h-5"></p>
+                <button type="submit" id="upload-btn" class="w-full bg-[#FF6B00] text-white font-bold py-3.5 rounded-xl glow-orange active:scale-95 transition tracking-wider">
+                    PUBLISH VIDEO
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex justify-center items-center p-4 backdrop-blur-sm">
+        <div class="glass w-full max-w-xs p-6 rounded-3xl border border-red-500/50 text-center">
+            <div class="w-16 h-16 rounded-full bg-red-500/20 text-red-500 flex justify-center items-center text-3xl mx-auto mb-4 border border-red-500/50">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white mb-2">Delete Video?</h2>
+            <p class="text-gray-400 text-sm mb-4">Enter Delete PIN to confirm removal.</p>
+            <input type="password" id="delete-pin-input" placeholder="Enter Delete PIN" class="text-center tracking-widest !mb-2">
+            <p id="delete-pin-error" class="text-red-500 text-xs font-semibold h-4 mb-4"></p>
+            <div class="flex gap-3">
+                <button onclick="toggleModal('delete-modal')" class="flex-1 bg-gray-700 text-white font-bold py-3 rounded-xl active:scale-95 transition">CANCEL</button>
+                <button onclick="confirmDelete()" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.5)] active:scale-95 transition" id="delete-btn-text">DELETE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex justify-center items-center p-4 backdrop-blur-sm">
+        <div class="glass w-full max-w-sm p-8 rounded-3xl border border-[#FF6B00]/30 text-center relative overflow-hidden">
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-[#FF6B00]/20 rounded-full blur-3xl"></div>
+            <div class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 flex justify-center items-center cursor-pointer active:scale-90 z-10" onclick="toggleModal('profile-modal')">
+                <i class="fa-solid fa-xmark text-white"></i>
+            </div>
+            <div class="w-24 h-24 mx-auto bg-gradient-to-tr from-[#FF6B00] to-orange-400 rounded-full flex justify-center items-center text-4xl font-black text-white shadow-lg shadow-[#FF6B00]/40 mb-4 relative z-10 border-4 border-[#0b0d10]">
+                S
+            </div>
+            <h2 class="text-xl font-bold text-white relative z-10 tracking-wide">MD. SHAHRIAR HOSSAIN</h2>
+            <p class="text-[#FF6B00] text-sm font-semibold mb-6 relative z-10">Platform Admin & Developer</p>
+            <div class="glass rounded-xl p-4 flex justify-around text-center relative z-10">
+                <div><div class="text-white font-bold text-lg" id="profile-vid-count">0</div><div class="text-gray-400 text-xs">Videos</div></div>
+                <div class="w-px bg-white/10"></div>
+                <div><div class="text-white font-bold text-lg">PRO</div><div class="text-gray-400 text-xs">Status</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase, Cloudinary & App Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, serverTimestamp, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+        // ==========================================
+        // Cloudinary & Settings - এখানে ডেটা বসাও
+        // ==========================================
+        const CLOUDINARY_CLOUD_NAME = "dux0otxuq"; 
+        const CLOUDINARY_UPLOAD_PRESET = "MiniTube";
+        const ADMIN_UPLOAD_PIN = "mubinxxx";
+        const ADMIN_DELETE_PIN = "xxxmubin";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwrE_RvPlc3qmQBSD3bZgapCFil9HSQgo",
+            authDomain: "minitube-4f53e.firebaseapp.com",
+            projectId: "minitube-4f53e",
+            storageBucket: "minitube-4f53e.firebasestorage.app",
+            messagingSenderId: "165581145600",
+            appId: "1:165581145600:web:5d6653ef686795b8bf3ae5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let allVideosData = []; 
+        let videoToDeleteId = null;
+        const feedContainer = document.getElementById('video-feed');
+        const searchInput = document.getElementById('search-input');
+
+        window.toggleModal = (id) => {
+            const modal = document.getElementById(id);
+            modal.classList.toggle('hidden');
+            if(id === 'upload-modal') {
+                document.getElementById('upload-status').innerText = ""; 
+                document.getElementById('upload-auth-section').classList.remove('hidden');
+                document.getElementById('upload-form').classList.add('hidden');
+                document.getElementById('upload-pin-input').value = "";
+                document.getElementById('upload-pin-error').innerText = "";
+            }
+        };
+
+        window.checkUploadPin = () => {
+            const pin = document.getElementById('upload-pin-input').value;
+            if(pin === ADMIN_UPLOAD_PIN) {
+                document.getElementById('upload-auth-section').classList.add('hidden');
+                document.getElementById('upload-form').classList.remove('hidden');
+            } else {
+                document.getElementById('upload-pin-error').innerText = "Incorrect PIN. Access Denied!";
+            }
+        };
+
+        window.openDeleteModal = (docId) => {
+            videoToDeleteId = docId;
+            document.getElementById('delete-pin-input').value = "";
+            document.getElementById('delete-pin-error').innerText = "";
+            toggleModal('delete-modal');
+        };
+
+        window.confirmDelete = async () => {
+            const pin = document.getElementById('delete-pin-input').value;
+            const btn = document.getElementById('delete-btn-text');
+            if(pin === ADMIN_DELETE_PIN) {
+                try {
+                    btn.innerText = "DELETING...";
+                    await deleteDoc(doc(db, "videos", videoToDeleteId));
+                    toggleModal('delete-modal');
+                    loadVideos();
+                } catch(error) {
+                    document.getElementById('delete-pin-error').innerText = "Failed to delete video.";
+                } finally {
+                    btn.innerText = "DELETE";
+                }
+            } else {
+                document.getElementById('delete-pin-error').innerText = "Incorrect Delete PIN!";
+            }
+        };
+
+        function formatTime(seconds) {
+            if(isNaN(seconds)) return "0:00";
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+        }
+
+        // ==========================================
+        // Updated Custom Player Logic (Fullscreen & UI Fix)
+        // ==========================================
+        function setupCustomPlayers() {
+            const players = document.querySelectorAll('.custom-player-container');
+            players.forEach(container => {
+                const video = container.querySelector('video');
+                const playBtn = container.querySelector('.play-btn');
+                const playIcon = playBtn.querySelector('i');
+                const muteBtn = container.querySelector('.mute-btn');
+                const muteIcon = muteBtn.querySelector('i');
+                const fullscreenBtn = container.querySelector('.full-btn');
+                const progressBar = container.querySelector('.progress-bar');
+                const timeDisplay = container.querySelector('.time-display');
+                const bigPlayBtn = container.querySelector('.big-play-btn');
+                const bottomControls = container.querySelector('.bottom-controls');
+
+                let controlsTimeout;
+                let hasStarted = false;
+
+                // Handle UI visibility
+                const showControls = () => {
+                    if(!hasStarted) return;
+                    bottomControls.classList.remove('opacity-0', 'pointer-events-none');
+                    bottomControls.classList.add('opacity-100', 'pointer-events-auto');
+                    
+                    clearTimeout(controlsTimeout);
+                    if (!video.paused) {
+                        controlsTimeout = setTimeout(hideControls, 2500);
+                    }
+                };
+
+                const hideControls = () => {
+                    if(video.paused) return; // Keep visible if paused
+                    bottomControls.classList.remove('opacity-100', 'pointer-events-auto');
+                    bottomControls.classList.add('opacity-0', 'pointer-events-none');
+                };
+
+                const togglePlay = (e) => {
+                    if(e) e.stopPropagation();
+                    hasStarted = true;
+
+                    // Pause others
+                    document.querySelectorAll('video').forEach(v => {
+                        if(v !== video && !v.paused) {
+                            v.pause();
+                            v.closest('.custom-player-container').querySelector('.play-btn i').className = 'fa-solid fa-play';
+                            v.closest('.custom-player-container').querySelector('.big-play-btn').classList.remove('hidden');
+                        }
+                    });
+
+                    if(video.paused) {
+                        video.play();
+                        playIcon.className = 'fa-solid fa-pause';
+                        bigPlayBtn.classList.add('hidden');
+                        showControls();
+                    } else {
+                        video.pause();
+                        playIcon.className = 'fa-solid fa-play';
+                        bigPlayBtn.classList.remove('hidden');
+                        showControls(); 
+                    }
+                };
+
+                playBtn.addEventListener('click', togglePlay);
+                bigPlayBtn.addEventListener('click', togglePlay);
+                video.addEventListener('click', togglePlay);
+
+                // Show/Hide controls on touch or mouse move
+                container.addEventListener('mousemove', showControls);
+                container.addEventListener('touchstart', showControls);
+                container.addEventListener('mouseleave', hideControls);
+                
+                // Prevent bottom controls click from pausing video
+                bottomControls.addEventListener('click', (e) => e.stopPropagation());
+
+                video.addEventListener('timeupdate', () => {
+                    const percent = (video.currentTime / video.duration) * 100;
+                    progressBar.value = percent || 0;
+                    timeDisplay.innerText = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+                });
+
+                progressBar.addEventListener('input', (e) => {
+                    const seekTime = (e.target.value / 100) * video.duration;
+                    video.currentTime = seekTime;
+                });
+
+                muteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    video.muted = !video.muted;
+                    muteIcon.className = video.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+                });
+
+                // Fullscreen Logic Applied to Container instead of Video
+                fullscreenBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                        if (container.requestFullscreen) {
+                            container.requestFullscreen();
+                        } else if (container.webkitRequestFullscreen) { /* Safari */
+                            container.webkitRequestFullscreen();
+                        }
+                        fullscreenBtn.innerHTML = '<i class="fa-solid fa-compress"></i>';
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        } else if (document.webkitExitFullscreen) { /* Safari */
+                            document.webkitExitFullscreen();
+                        }
+                        fullscreenBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
+                    }
+                });
+
+                video.addEventListener('loadedmetadata', () => {
+                    timeDisplay.innerText = `0:00 / ${formatTime(video.duration)}`;
+                });
+                
+                video.addEventListener('ended', () => {
+                    playIcon.className = 'fa-solid fa-rotate-right';
+                    bigPlayBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
+                    bigPlayBtn.classList.remove('hidden');
+                    showControls();
+                });
+            });
+        }
+
+        function renderVideos(videosToRender) {
+            feedContainer.innerHTML = ''; 
+            if(videosToRender.length === 0) {
+                feedContainer.innerHTML = `<div class="text-center text-gray-500 mt-20"><i class="fa-solid fa-ghost text-5xl mb-4 text-[#FF6B00]/30"></i><p class="font-semibold">No videos found!</p></div>`;
+                return;
+            }
+
+            videosToRender.forEach((vid) => {
+                const card = `
+                    <div class="glass rounded-3xl overflow-hidden shadow-2xl mb-8 border border-white/5 relative">
+                        <!-- Custom Player UI Updated -->
+                        <div class="custom-player-container relative w-full aspect-video bg-black group overflow-hidden bg-black">
+                            <video class="w-full h-full object-cover transition-all" poster="${vid.thumbnailUrl}" playsinline preload="metadata">
+                                <source src="${vid.videoUrl}" type="video/mp4">
+                            </video>
+                            
+                            <!-- Initial Big Play Button -->
+                            <div class="big-play-btn absolute inset-0 flex justify-center items-center bg-black/20 hover:bg-black/40 cursor-pointer transition">
+                                <div class="w-16 h-16 bg-[#FF6B00]/90 rounded-full flex justify-center items-center text-white text-2xl shadow-lg backdrop-blur-sm">
+                                    <i class="fa-solid fa-play ml-1"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- Bottom Controls (Initially Hidden opacity-0) -->
+                            <div class="bottom-controls absolute bottom-0 left-0 right-0 p-3 pt-16 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 pointer-events-none transition-opacity duration-300">
+                                <input type="range" class="progress-bar mb-3" value="0" min="0" max="100">
+                                <div class="flex justify-between items-center text-white px-1">
+                                    <div class="flex items-center gap-5">
+                                        <button class="play-btn text-xl hover:text-[#FF6B00] transition"><i class="fa-solid fa-play"></i></button>
+                                        <button class="mute-btn text-lg hover:text-[#FF6B00] transition"><i class="fa-solid fa-volume-high"></i></button>
+                                        <span class="time-display text-xs font-semibold tracking-wide text-gray-300">0:00 / 0:00</span>
+                                    </div>
+                                    <button class="full-btn text-lg hover:text-[#FF6B00] transition"><i class="fa-solid fa-expand"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 flex gap-4 items-center">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-gray-800 to-gray-700 flex-shrink-0 flex justify-center items-center text-[#FF6B00] text-xl font-black border-2 border-gray-600/50 shadow-md">
+                                ${vid.channel.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-white leading-tight mb-1 text-[15px] line-clamp-2">${vid.title}</h3>
+                                <p class="text-xs font-semibold text-gray-400">${vid.channel}</p>
+                            </div>
+                            <div class="text-red-500/70 hover:text-red-500 cursor-pointer px-3 py-2 transition text-lg" onclick="openDeleteModal('${vid.id}')">
+                                <i class="fa-solid fa-trash"></i>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                feedContainer.innerHTML += card;
+            });
+
+            setupCustomPlayers();
+        }
+
+        async function loadVideos() {
+            try {
+                const q = query(collection(db, "videos"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                allVideosData = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data(); data.id = doc.id; allVideosData.push(data);
+                });
+                document.getElementById('total-count').innerText = `${allVideosData.length} Videos`;
+                document.getElementById('profile-vid-count').innerText = allVideosData.length;
+                renderVideos(allVideosData);
+            } catch (error) {
+                feedContainer.innerHTML = '<div class="text-center text-red-500 mt-10">Error loading DB.</div>';
+            }
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allVideosData.filter(vid => vid.title.toLowerCase().includes(term) || vid.channel.toLowerCase().includes(term));
+            renderVideos(filtered);
+        });
+
+        async function uploadToCloudinary(file, resourceType) {
+            const formData = new FormData();
+            formData.append("file", file); formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, { method: 'POST', body: formData });
+            const data = await response.json();
+            if(data.error) throw new Error(data.error.message);
+            return data.secure_url;
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('vid-title').value;
+            const channel = document.getElementById('vid-channel').value;
+            const thumbFile = document.getElementById('thumb-file').files[0];
+            const videoFile = document.getElementById('vid-file').files[0];
+            const uploadBtn = document.getElementById('upload-btn');
+            const statusText = document.getElementById('upload-status');
+
+            try {
+                uploadBtn.disabled = true; uploadBtn.classList.add('opacity-50');
+                statusText.innerText = "Processing Thumbnail...";
+                const thumbnailUrl = await uploadToCloudinary(thumbFile, "image");
+                statusText.innerText = "Uploading Video... (Please wait)";
+                const videoUrl = await uploadToCloudinary(videoFile, "video");
+                statusText.innerText = "Finalizing...";
+                await addDoc(collection(db, "videos"), { title, channel, videoUrl, thumbnailUrl, createdAt: serverTimestamp() });
+                statusText.innerText = "SUCCESS! 🎉";
+                setTimeout(() => {
+                    document.getElementById('upload-form').reset();
+                    toggleModal('upload-modal');
+                    uploadBtn.disabled = false; uploadBtn.classList.remove('opacity-50');
+                    loadVideos();
+                }, 2000);
+            } catch (error) {
+                statusText.innerText = "Error: " + error.message;
+                uploadBtn.disabled = false; uploadBtn.classList.remove('opacity-50');
+            }
+        });
+
+        loadVideos();
+    </script>
+</body>
+</html>
